@@ -1,6 +1,6 @@
 /***
  * Browse a URL, take a screenshot, and save the HTML content to local files.
- * Usage: node index.html <URL>
+ * Usage: node index.js <URL>
  */
 const {Command} = require('commander');
 const puppeteer = require('puppeteer');
@@ -8,7 +8,6 @@ const fs = require('fs');
 const url = require('url')
 
 // defaults
-let tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 let userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36';
 let website_url = null
 
@@ -48,7 +47,9 @@ const vpHeight = 720;
     const page = await browser.newPage();
 
     await page.setUserAgent(options.useragent);
-    await page.emulateTimezone(options.timezone)
+    if (options.timezone) {
+        await page.emulateTimezone(options.timezone);
+    }
 
     // Set viewport width and height
     await page.setViewport({ width: vpWidth, height: vpHeight });
