@@ -22,6 +22,8 @@ Options:
                                      default based on URL
   -o, --htmlout <htmlOutPath>        Write HTML to this file - default based on
                                      URL
+  -l, --lang <locale>                set the browser locale (default:
+                                     "en_US.UTF-8")
   -h, --help                         display help for command
 ```
 Web proxy - chromium honors standard `*_proxy` environment variables.

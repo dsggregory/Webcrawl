@@ -9,7 +9,11 @@ const url = require('url')
 
 // defaults
 let userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36';
-let website_url = null
+let website_url = null;
+let lang = process.env.LANG;
+if (!lang) {
+    lang = 'en-US';
+}
 
 // program args
 const program = new Command();
@@ -22,6 +26,7 @@ program.
         .option('-a, --useragent <userAgent>', 'set the request\'s UserAgent', userAgent)
         .option("-s, --screenshot <screenshotPath>", 'Write screenshot PDF to this file - default based on URL')
         .option('-o, --htmlout <htmlOutPath>', 'Write HTML to this file - default based on URL')
+    .option('-l, --lang <locale>', 'set the browser locale', lang)
         .action((url) => {
             website_url = url
         })
@@ -41,7 +46,9 @@ const vpHeight = 720;
 
 (async () => {
     // Create a browser instance
-    const browser = await puppeteer.launch({});
+    const browser = await puppeteer.launch({
+        args: [`--lang=${options.lang}`]
+    });
 
     // Create a new page
     const page = await browser.newPage();
