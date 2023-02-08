@@ -3,7 +3,7 @@ Use puppeteer and headless chromium to capture a web page. See Requirements belo
 
 ## Usage
 ```shell
-Usage: index [OPTIONS]... <URL>
+Usage: node index.js [OPTIONS]... <URL>
 
 Browse a URL, take a PDF screenshot, and save it plus the HTML content to local files
 
@@ -27,6 +27,7 @@ Options:
 Web proxy - chromium honors standard `*_proxy` environment variables.
 
 # Requirements
+The following is to install dependencies on a Mac. See puppeteer docs for other OS's.
 ```shell
 $ brew install --cask chromium --no-quarantine
 $ export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
