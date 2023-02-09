@@ -4,6 +4,7 @@
  */
 const {Command} = require('commander');
 const puppeteer = require('puppeteer');
+const request_client = require('request-promise-native');
 const fs = require('fs');
 const url = require('url')
 
@@ -24,8 +25,7 @@ program.
         .argument('<url>', 'URL to browse')
         .option('-z, --timezone <timezone>', 'set the chromium timezone (ex. America/New_York)', 'UTC')
         .option('-a, --useragent <userAgent>', 'set the request\'s UserAgent', userAgent)
-        .option("-s, --screenshot <screenshotPath>", 'Write screenshot PDF to this file - default based on URL')
-        .option('-o, --htmlout <htmlOutPath>', 'Write HTML to this file - default based on URL')
+        .option('-o, --out <basePath>', 'Write HTML/PDF/etc. to this base file path - default based on URL')
     .option('-l, --lang <locale>', 'set the browser locale', lang)
         .action((url) => {
             website_url = url
@@ -34,12 +34,12 @@ program.
 const options = program.opts();
 
 let parsed = url.parse(website_url)
-if (!options.screenshot) {
-    options.screenshot = parsed.host + '.pdf'
+if (!options.out) {
+    options.out = parsed.host
 }
-if (!options.htmlout) {
-    options.htmlout = parsed.host + '.html'
-}
+options.screenshot = options.out + '.pdf';
+options.htmlout = options.out + '.html';
+options.resultsout = options.out + '.results.json'
 
 const vpWidth = 1280;
 const vpHeight = 720;
@@ -61,9 +61,43 @@ const vpHeight = 720;
     // Set viewport width and height
     await page.setViewport({ width: vpWidth, height: vpHeight });
 
+    // Capture all network requests
+    const result = [];
+    await page.setRequestInterception(true);
+    page.on('request', request => {
+        request_client({
+            uri: request.url(),
+            resolveWithFullResponse: true,
+        }).then(response => {
+            const request_url = request.url();
+            const request_headers = request.headers();
+            const request_post_data = request.postData();
+            const response_headers = response.headers;
+            const response_size = response_headers['content-length'];
+            const response_body = response.body;
+
+            result.push({
+                request_url,
+                request_headers,
+                request_post_data,
+                response_headers,
+                response_size,
+                response_body,
+            });
+
+            //console.log(result);
+            request.continue();
+        }).catch(error => {
+            //console.error(error);
+            result.push({error})
+            request.abort();
+        });
+    });
+
     // Open URL in current page
     await page.goto(website_url, { waitUntil: 'networkidle0', timeout: 15000 });
 
+    // save the PDF
     await page.pdf({
         path: options.screenshot,
         format: 'A4',
@@ -78,6 +112,14 @@ const vpHeight = 720;
         console.log(`Wrote HTML to ${options.htmlout}`)
     } catch (err) {
         console.error(err);
+    }
+
+    // save the network trace results
+    try {
+        fs.writeFileSync(options.resultsout, JSON.stringify(result, null, 2))
+        console.log(`Wrote network trace to ${options.resultsout}`)
+    } catch (err) {
+        console.error(err)
     }
 
     // Close the browser instance
