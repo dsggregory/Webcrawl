@@ -28,7 +28,7 @@ program.
         .option('-z, --timezone <timezone>', 'set the chromium timezone (ex. America/New_York)', 'UTC')
         .option('-a, --useragent <userAgent>', 'set the request\'s UserAgent', userAgent)
         .option('-o, --out <basePath>', 'Write HTML/PDF/etc. to this base file path - default based on URL')
-    .option('-l, --lang <locale>', 'set the browser locale', lang)
+        .option('-l, --lang <locale>', 'set the browser locale', lang)
         .action((url) => {
             website_url = url
         })
@@ -137,20 +137,12 @@ const vpHeight = 720;
 
     // save the content
     const html = await page.content();
-    try {
-        fs.writeFileSync(options.htmlout, html);
-        console.log(`Wrote HTML to ${options.htmlout}`);
-    } catch (err) {
-        console.error(err);
-    }
+    await promisify(fs.writeFile)(options.htmlout, html);
+    console.log(`Wrote HTML to ${options.htmlout}`);
 
     // save the network trace results
-    try {
-        fs.writeFileSync(options.resultsout, JSON.stringify(result, null, 2))
-        console.log(`Wrote network trace to ${options.resultsout}`);
-    } catch (err) {
-        console.error(err);
-    }
+    await promisify(fs.writeFile)(options.resultsout, JSON.stringify(result, null, 2));
+    console.log(`Wrote network trace to ${options.resultsout}`);
 
     // Close the browser instance
     await browser.close();
