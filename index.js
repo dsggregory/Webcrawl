@@ -3,7 +3,10 @@
  * Usage: node index.js <URL>
  */
 const {Command} = require('commander');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth')
+puppeteer.use(StealthPlugin())
+const {executablePath} = require('puppeteer')
 const request_client = require('request-promise-native');
 const { harFromMessages } = require('chrome-har');
 const fs = require('fs');
@@ -50,7 +53,8 @@ const vpHeight = 720;
 (async () => {
     // Create a browser instance
     const browser = await puppeteer.launch({
-        args: [`--lang=${options.lang}`]
+        args: [`--lang=${options.lang}`],
+        executablePath: executablePath(),
     });
 
     // Create a new page
@@ -60,6 +64,9 @@ const vpHeight = 720;
     if (options.timezone) {
         await page.emulateTimezone(options.timezone);
     }
+
+    // any other extra http headers
+    //await page.setExtraHTTPHeaders()
 
     // Set viewport width and height
     await page.setViewport({ width: vpWidth, height: vpHeight });
@@ -144,12 +151,12 @@ const vpHeight = 720;
     await promisify(fs.writeFile)(options.resultsout, JSON.stringify(result, null, 2));
     console.log(`Wrote network trace to ${options.resultsout}`);
 
-    // Close the browser instance
-    await browser.close();
-
     // save the Chrome HAR file for events
     const har = harFromMessages(events);
     await promisify(fs.writeFile)(options.harout, JSON.stringify(har));
     console.log(`Wrote events to ${options.harout}`);
+
+    // Close the browser instance
+    await browser.close();
 
 })();
