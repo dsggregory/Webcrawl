@@ -5,8 +5,10 @@
 const {Command} = require('commander');
 const puppeteer = require('puppeteer');
 const request_client = require('request-promise-native');
+const { harFromMessages } = require('chrome-har');
 const fs = require('fs');
-const url = require('url')
+const url = require('url');
+const { promisify } = require('util');
 
 // defaults
 let userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36';
@@ -40,6 +42,7 @@ if (!options.out) {
 options.screenshot = options.out + '.pdf';
 options.htmlout = options.out + '.html';
 options.resultsout = options.out + '.results.json'
+options.harout = options.out + '.har'
 
 const vpWidth = 1280;
 const vpHeight = 720;
@@ -61,7 +64,34 @@ const vpHeight = 720;
     // Set viewport width and height
     await page.setViewport({ width: vpWidth, height: vpHeight });
 
-    // Capture all network requests
+    // Capture all events to be written to Chrome HAR file
+    const events = []
+    // event types to observe
+    const observe = [
+        'Page.loadEventFired',
+        'Page.domContentEventFired',
+        'Page.frameStartedLoading',
+        'Page.frameAttached',
+        'Network.requestWillBeSent',
+        'Network.requestServedFromCache',
+        'Network.dataReceived',
+        'Network.responseReceived',
+        'Network.resourceChangedPriority',
+        'Network.loadingFinished',
+        'Network.loadingFailed',
+    ];
+    // register events listeners
+    const client = await page.target().createCDPSession();
+    await client.send('Page.enable');
+    await client.send('Network.enable');
+    observe.forEach(method => {
+        client.on(method, params => {
+            events.push({ method, params });
+        });
+    });
+
+
+    // Capture all requests/responses
     const result = [];
     await page.setRequestInterception(true);
     page.on('request', request => {
@@ -103,13 +133,13 @@ const vpHeight = 720;
         format: 'A4',
         fullPage: true,
     });
-    console.log(`Wrote screen capture to ${options.screenshot}`)
+    console.log(`Wrote screen capture to ${options.screenshot}`);
 
     // save the content
     const html = await page.content();
     try {
         fs.writeFileSync(options.htmlout, html);
-        console.log(`Wrote HTML to ${options.htmlout}`)
+        console.log(`Wrote HTML to ${options.htmlout}`);
     } catch (err) {
         console.error(err);
     }
@@ -117,11 +147,17 @@ const vpHeight = 720;
     // save the network trace results
     try {
         fs.writeFileSync(options.resultsout, JSON.stringify(result, null, 2))
-        console.log(`Wrote network trace to ${options.resultsout}`)
+        console.log(`Wrote network trace to ${options.resultsout}`);
     } catch (err) {
-        console.error(err)
+        console.error(err);
     }
 
     // Close the browser instance
     await browser.close();
+
+    // save the Chrome HAR file for events
+    const har = harFromMessages(events);
+    await promisify(fs.writeFile)(options.harout, JSON.stringify(har));
+    console.log(`Wrote events to ${options.harout}`);
+
 })();
