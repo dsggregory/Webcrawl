@@ -151,7 +151,7 @@ const vpHeight = 720;
         // save the JPEG
         scPath = options.screenshot + '.jpg'
         await page.screenshot({
-            path: 'screenshot.jpg',
+            path: scPath,
             fullPage: true,
         });
     } else {
