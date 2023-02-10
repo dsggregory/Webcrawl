@@ -11,6 +11,7 @@ const request_client = require('request-promise-native');
 const { harFromMessages } = require('chrome-har');
 const fs = require('fs');
 const url = require('url');
+const which = require('which')
 const { promisify } = require('util');
 
 // defaults
@@ -28,9 +29,10 @@ program.
         .usage('[OPTIONS]... <URL>')
         .description('Browse a URL, take a PDF screenshot, and save it plus the HTML content to local files')
         .argument('<url>', 'URL to browse')
+        .option('-o, --out <basePath>', 'Write HTML/PDF/etc. to this base file path - default based on URL')
+        .option('-j, --jpg', 'Write a JPEG format of the screen capture vs. PDF by default')
         .option('-z, --timezone <timezone>', 'set the chromium timezone (ex. America/New_York)', 'UTC')
         .option('-a, --useragent <userAgent>', 'set the request\'s UserAgent', userAgent)
-        .option('-o, --out <basePath>', 'Write HTML/PDF/etc. to this base file path - default based on URL')
         .option('-l, --lang <locale>', 'set the browser locale', lang)
         .action((url) => {
             website_url = url
@@ -42,7 +44,7 @@ let parsed = url.parse(website_url)
 if (!options.out) {
     options.out = parsed.host
 }
-options.screenshot = options.out + '.pdf';
+options.screenshot = options.out
 options.htmlout = options.out + '.html';
 options.resultsout = options.out + '.results.json'
 options.harout = options.out + '.har'
@@ -51,10 +53,19 @@ const vpWidth = 1280;
 const vpHeight = 720;
 
 (async () => {
+    // puppeteer needs to know where the chromium binary is located
+    let chromiumPath = "";
+    try {
+        // this will work if PUPPETEER_EXECUTABLE_PATH environment is defined
+        chromiumPath = executablePath();
+    } catch (e) {
+        // look for it in $PATH
+        chromiumPath = await which('chromium')
+    }
     // Create a browser instance
     const browser = await puppeteer.launch({
         args: [`--lang=${options.lang}`],
-        executablePath: executablePath(),
+        executablePath: chromiumPath,
     });
 
     // Create a new page
@@ -65,7 +76,7 @@ const vpHeight = 720;
         await page.emulateTimezone(options.timezone);
     }
 
-    // any other extra http headers
+    // any other extra http request headers
     //await page.setExtraHTTPHeaders()
 
     // Set viewport width and height
@@ -134,13 +145,25 @@ const vpHeight = 720;
     // Open URL in current page
     await page.goto(website_url, { waitUntil: 'networkidle0', timeout: 15000 });
 
-    // save the PDF
-    await page.pdf({
-        path: options.screenshot,
-        format: 'A4',
-        fullPage: true,
-    });
-    console.log(`Wrote screen capture to ${options.screenshot}`);
+    // save the screen capture
+    let scPath = "";
+    if (options.jgp) {
+        // save the JPEG
+        scPath = options.screenshot + '.jpg'
+        await page.screenshot({
+            path: 'screenshot.jpg',
+            fullPage: true,
+        });
+    } else {
+        // save the PDF
+        scPath = options.screenshot + '.pdf'
+        await page.pdf({
+            path: scPath,
+            format: 'A4',
+            fullPage: true,
+        });
+    }
+    console.log(`Wrote screen capture to ${scPath}`);
 
     // save the content
     const html = await page.content();
