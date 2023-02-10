@@ -14,7 +14,7 @@ Options:
   -v, --version                output the version number
   -o, --out <basePath>         Write HTML/PDF/etc. to this base file path -
                                default based on URL
-  -j, --jpg                    Write a JPEG format of the screen capture vs.
+  -j, --jpeg                   Write a JPEG format of the screen capture vs.
                                PDF by default
   -z, --timezone <timezone>    set the chromium timezone (ex. America/New_York)
                                (default: "UTC")
@@ -33,7 +33,7 @@ By default, results are written to a set of files based on the host of the origi
 | File Ext      | Description                                                                                                                                                                                     |
 |---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | .har          | a Chrome HAR file. Once created you can view it from a Chrome browser by opening the developer tools (right click -> inspect), click on the `Network` tab, and then drag-and-drop the har file. |
-| .pdf<br/>.jpg | a PDF screen capture of the resulting page or JPEG if the `--jpg` option is used                                                                                                                |
+| .pdf<br/>.jpg | a PDF screen capture of the resulting page or JPEG if the `--jpeg` option is used                                                                                                               |
 | .html         | the HTML of the resulting page                                                                                                                                                                  |
 | .results.json | a JSON object dump of all requests and responses. See .har as it may be of more value to you                                                                                                    |
 

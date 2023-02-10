@@ -30,7 +30,7 @@ program.
         .description('Browse a URL, take a PDF screenshot, and save it plus the HTML content to local files')
         .argument('<url>', 'URL to browse')
         .option('-o, --out <basePath>', 'Write HTML/PDF/etc. to this base file path - default based on URL')
-        .option('-j, --jpg', 'Write a JPEG format of the screen capture vs. PDF by default')
+        .option('-j, --jpeg', 'Write a JPEG format of the screen capture vs. PDF by default')
         .option('-z, --timezone <timezone>', 'set the chromium timezone (ex. America/New_York)', 'UTC')
         .option('-a, --useragent <userAgent>', 'set the request\'s UserAgent', userAgent)
         .option('-l, --lang <locale>', 'set the browser locale', lang)
@@ -147,7 +147,7 @@ const vpHeight = 720;
 
     // save the screen capture
     let scPath = "";
-    if (options.jgp) {
+    if (options.jpeg) {
         // save the JPEG
         scPath = options.screenshot + '.jpg'
         await page.screenshot({
