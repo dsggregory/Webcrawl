@@ -2,6 +2,7 @@
 Use puppeteer and headless chromium to capture a web page. See Requirements below for how to install.
 
 ## Usage
+The path to the Chromium binary must be found from either the PUPPETEER_EXECUTABLE_PATH or PATH environment variable.
 ```shell
 Usage: node index.js [OPTIONS]... <URL>
 
