@@ -34,6 +34,7 @@ program.
         .option('-z, --timezone <timezone>', 'set the chromium timezone (ex. America/New_York)', 'UTC')
         .option('-a, --useragent <userAgent>', 'set the request\'s UserAgent', userAgent)
         .option('-l, --lang <locale>', 'set the browser locale', lang)
+        .option('-t, --timeout <secs>', 'Set the timeout (in seconds) on requests', 15)
         .action((url) => {
             website_url = url
         })
@@ -81,6 +82,16 @@ const vpHeight = 720;
 
     // Set viewport width and height
     await page.setViewport({ width: vpWidth, height: vpHeight });
+
+    // Save request failures and console messages
+    let consolePath = options.out + '.console'
+    console.log(`Writing console logs to ${consolePath}`);
+    consoleFp = fs.createWriteStream(consolePath, {})
+    page.on('requestfailed', request => {
+        consoleFp.write(request.url() + ' ' + request.failure().errorText + "\n");
+    });
+    page.on('console', (message) =>
+        consoleFp.write(`${message.type().substr(0, 3).toUpperCase()} ${message.text()}\n`))
 
     // Capture all events to be written to Chrome HAR file
     const events = []
@@ -143,7 +154,7 @@ const vpHeight = 720;
     });
 
     // Open URL in current page
-    await page.goto(website_url, { waitUntil: 'networkidle0', timeout: 15000 });
+    await page.goto(website_url, { waitUntil: 'networkidle0', timeout: options.timeout * 1000 });
 
     // save the screen capture
     let scPath = "";
