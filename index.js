@@ -8,11 +8,11 @@ const StealthPlugin = require('puppeteer-extra-plugin-stealth')
 puppeteer.use(StealthPlugin())
 const {executablePath} = require('puppeteer')
 const request_client = require('request-promise-native');
-const { harFromMessages } = require('chrome-har');
+const {harFromMessages} = require('chrome-har');
 const fs = require('fs');
 const url = require('url');
 const which = require('which')
-const { promisify } = require('util');
+const {promisify} = require('util');
 
 // defaults
 let userAgent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.108 Safari/537.36';
@@ -24,21 +24,20 @@ if (!lang) {
 
 // program args
 const program = new Command();
-program.
-    version('1.0.0', '-v, --version')
-        .usage('[OPTIONS]... <URL>')
-        .description('Browse a URL, take a PDF screenshot, and save it plus the HTML content to local files')
-        .argument('<url>', 'URL to browse')
-        .option('-o, --out <basePath>', 'Write HTML/PDF/etc. to this base file path - default based on URL')
-        .option('-j, --jpeg', 'Write a JPEG format of the screen capture vs. PDF by default')
-        .option('-z, --timezone <timezone>', 'set the chromium timezone (ex. America/New_York)', 'UTC')
-        .option('-a, --useragent <userAgent>', 'set the request\'s UserAgent', userAgent)
-        .option('-l, --lang <locale>', 'set the browser locale', lang)
-        .option('-t, --timeout <secs>', 'Set the timeout (in seconds) on requests', 15)
-        .action((url) => {
-            website_url = url
-        })
-        .parse(process.argv);
+program.version('1.0.0', '-v, --version')
+    .usage('[OPTIONS]... <URL>')
+    .description('Browse a URL, take a PDF screenshot, and save it plus the HTML content to local files')
+    .argument('<url>', 'URL to browse')
+    .option('-o, --out <basePath>', 'Write HTML/PDF/etc. to this base file path - default based on URL')
+    .option('-j, --jpeg', 'Write a JPEG format of the screen capture vs. PDF by default')
+    .option('-z, --timezone <timezone>', 'set the chromium timezone (ex. America/New_York)', 'UTC')
+    .option('-a, --useragent <userAgent>', 'set the request\'s UserAgent', userAgent)
+    .option('-l, --lang <locale>', 'set the browser locale', lang)
+    .option('-t, --timeout <secs>', 'Set the timeout (in seconds) on requests', 15)
+    .action((url) => {
+        website_url = url
+    })
+    .parse(process.argv);
 const options = program.opts();
 
 let parsed = url.parse(website_url)
@@ -81,12 +80,12 @@ const vpHeight = 720;
     //await page.setExtraHTTPHeaders()
 
     // Set viewport width and height
-    await page.setViewport({ width: vpWidth, height: vpHeight });
+    await page.setViewport({width: vpWidth, height: vpHeight});
 
     // Save request failures and console messages
     let consolePath = options.out + '.console'
     console.log(`Writing console logs to ${consolePath}`);
-    consoleFp = fs.createWriteStream(consolePath, {})
+    let consoleFp = fs.createWriteStream(consolePath, {});
     page.on('requestfailed', request => {
         consoleFp.write(request.url() + ' ' + request.failure().errorText + "\n");
     });
@@ -94,7 +93,7 @@ const vpHeight = 720;
         consoleFp.write(`${message.type().substr(0, 3).toUpperCase()} ${message.text()}\n`))
 
     // Capture all events to be written to Chrome HAR file
-    const events = []
+    const events = [];
     // event types to observe
     const observe = [
         'Page.loadEventFired',
@@ -115,7 +114,7 @@ const vpHeight = 720;
     await client.send('Network.enable');
     observe.forEach(method => {
         client.on(method, params => {
-            events.push({ method, params });
+            events.push({method, params});
         });
     });
 
@@ -124,13 +123,16 @@ const vpHeight = 720;
     const result = [];
     await page.setRequestInterception(true);
     page.on('request', request => {
+        consoleFp.write(`REQ: ${request.url()}\n`);
         request_client({
             uri: request.url(),
             resolveWithFullResponse: true,
+            timeout: 5000,
         }).then(response => {
             const request_url = request.url();
             const request_headers = request.headers();
             const request_post_data = request.postData();
+            const response_code = response.statusCode;
             const response_headers = response.headers;
             const response_size = response_headers['content-length'];
             const response_body = response.body;
@@ -139,6 +141,7 @@ const vpHeight = 720;
                 request_url,
                 request_headers,
                 request_post_data,
+                response_code,
                 response_headers,
                 response_size,
                 response_body,
@@ -154,7 +157,12 @@ const vpHeight = 720;
     });
 
     // Open URL in current page
-    await page.goto(website_url, { waitUntil: 'networkidle0', timeout: options.timeout * 1000 });
+    try {
+        await page.goto(website_url, {waitUntil: 'networkidle0', timeout: options.timeout * 1000});
+    } catch (e) {
+        consoleFp.write(`ERR: ${e.message}\n`)
+        console.log(e)
+    }
 
     // save the screen capture
     let scPath = "";
@@ -176,11 +184,6 @@ const vpHeight = 720;
     }
     console.log(`Wrote screen capture to ${scPath}`);
 
-    // save the content
-    const html = await page.content();
-    await promisify(fs.writeFile)(options.htmlout, html);
-    console.log(`Wrote HTML to ${options.htmlout}`);
-
     // save the network trace results
     await promisify(fs.writeFile)(options.resultsout, JSON.stringify(result, null, 2));
     console.log(`Wrote network trace to ${options.resultsout}`);
@@ -190,6 +193,15 @@ const vpHeight = 720;
     await promisify(fs.writeFile)(options.harout, JSON.stringify(har));
     console.log(`Wrote events to ${options.harout}`);
 
+    // save the content
+    try {
+        const html = await page.content({timeout: 15000});
+        await promisify(fs.writeFile)(options.htmlout, html);
+        console.log(`Wrote HTML to ${options.htmlout}`);
+    } catch (e) {
+        console.error(e)
+        consoleFp.write(`ERR: ${e.message}\n`)
+    }
     // Close the browser instance
     await browser.close();
 
